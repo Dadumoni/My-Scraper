@@ -314,6 +314,7 @@ def create_16by9_grid_bytes(image_urls):
             resp = requests.get(url, headers=HEADERS, timeout=8)
             if resp.status_code == 200:
                 img = Image.open(BytesIO(resp.content)).convert("RGB")
+                img.thumbnail((1280, 1280))  # memory bachane ke liye
                 images.append(img)
             else:
                 alt_url = re.sub(
@@ -327,6 +328,7 @@ def create_16by9_grid_bytes(image_urls):
                         img = Image.open(BytesIO(alt_resp.content)).convert(
                             "RGB"
                         )
+                        img.thumbnail((1280, 1280))  # memory bachane ke liye
                         images.append(img)
         except Exception:
             pass
