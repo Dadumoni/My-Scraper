@@ -8,6 +8,8 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY scraper.py .
+COPY scraper.py run.py ./
 
-CMD ["python", "scraper.py"]
+EXPOSE 8000
+
+CMD ["python", "run.py"]
