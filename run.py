@@ -1,4 +1,5 @@
 import os
+import resource
 import subprocess
 import sys
 import threading
@@ -9,6 +10,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 PORT = int(os.getenv("PORT", "8000"))
 PING_INTERVAL = int(os.getenv("PING_INTERVAL", "240"))  # seconds
 RESCRAPE_MINUTES = int(os.getenv("RESCRAPE_MINUTES", "0"))  # 0 = scraper ek hi baar chalega
+MAX_RESTARTS = int(os.getenv("MAX_RESTARTS", "5"))  # crash par max kitni baar dobara chalana
+RESTART_DELAY = int(os.getenv("RESTART_DELAY", "60"))  # seconds
 SCRAPER_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scraper.py")
 
 
@@ -55,7 +58,9 @@ def ping_loop(url):
 def run_scraper():
     print("[run] scraper.py start", flush=True)
     code = subprocess.call([sys.executable, SCRAPER_PATH])
-    print(f"[run] scraper.py finished, exit code: {code}", flush=True)
+    peak_mb = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss // 1024
+    print(f"[run] scraper.py finished, exit code: {code}, peak memory: {peak_mb} MB", flush=True)
+    return code
 
 
 def main():
@@ -70,8 +75,18 @@ def main():
     else:
         print("[run] SELF_URL / KOYEB_PUBLIC_DOMAIN nahi mila, auto ping band hai", flush=True)
 
+    crashes = 0
     while True:
-        run_scraper()
+        code = run_scraper()
+        if code != 0:
+            crashes += 1
+            if crashes > MAX_RESTARTS:
+                print("[run] bahut baar crash hua, ab dobara nahi chalaunga", flush=True)
+                break
+            print(f"[run] {RESTART_DELAY}s baad dobara chalega ({crashes}/{MAX_RESTARTS})", flush=True)
+            time.sleep(RESTART_DELAY)
+            continue
+        crashes = 0
         if RESCRAPE_MINUTES <= 0:
             break
         time.sleep(RESCRAPE_MINUTES * 60)
